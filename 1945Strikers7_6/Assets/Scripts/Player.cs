@@ -1,3 +1,4 @@
+using Unity.Burst.Intrinsics;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
@@ -21,6 +22,14 @@ public class Player : MonoBehaviour
     public float gValue = 0;
     public Image Gage;
 
+    // 조이스틱을 위한 트리거
+    bool canAttack = false;
+    bool canLazer = false;
+
+    [SerializeField]
+    //조이스틱
+    private DynamicJoystick dJoystick;
+
     Animator ani;   // 애니메이터 컴포넌트
 
     void Start()
@@ -30,10 +39,18 @@ public class Player : MonoBehaviour
 
     void Update()
     {
+        float moveX = moveSpeed * Time.unscaledDeltaTime * dJoystick.Horizontal;
+        float moveY = moveSpeed * Time.unscaledDeltaTime * dJoystick.Vertical;
+
+        transform.Translate(new Vector3(moveX, moveY, 0));
+
+
         float x = Input.GetAxis("Horizontal");
         float y = Input.GetAxis("Vertical");
-
         Vector2 input = new Vector2(x, y);
+
+        Vector3 move = new Vector3(input.x, input.y, 0f) * moveSpeed * Time.deltaTime;
+        transform.Translate(move, Space.World);
 
         // 대각선 보정
         if (input.sqrMagnitude > 1f) input.Normalize();
@@ -59,12 +76,13 @@ public class Player : MonoBehaviour
             Instantiate(Bomb, Vector2.zero, Quaternion.identity);
         }
 
-        if(Input.GetKeyDown(KeyCode.Space))
+        if(Input.GetKeyDown(KeyCode.Space) || canAttack)
         {
             // 미사일 생성
             Instantiate(bulletPrefeb[power], pos.position, Quaternion.identity);
+            canAttack = false;
         }
-        else if(Input.GetKey(KeyCode.Space))
+        else if(Input.GetKey(KeyCode.Space) || canLazer)
         {
             gValue += Time.deltaTime;
             // 게이지 바 적용
@@ -73,7 +91,7 @@ public class Player : MonoBehaviour
             if(gValue >= 1f)
             {
                 var la = Instantiate(lazer, pos.position, Quaternion.identity);
-                Destroy(la, 3);
+                Destroy(la, 1);
                 gValue = 0;
             }
         }
@@ -90,9 +108,6 @@ public class Player : MonoBehaviour
             Gage.fillAmount = gValue;
         }
         
-
-        Vector3 move = new Vector3(input.x, input.y, 0f) * moveSpeed * Time.deltaTime;
-        transform.Translate(move, Space.World);
 
         // 화면 밖으로 나가지 않도록 월드 좌표를 뷰포트 좌표로 변환합니다.
         Vector3 viewPos = Camera.main.WorldToViewportPoint(transform.position);
@@ -126,5 +141,20 @@ public class Player : MonoBehaviour
             
             Destroy(collision.gameObject);
         }
+    }
+
+    public void Fire()
+    {
+        canAttack = true;
+    }
+
+    public void LazerOn()
+    {
+        canLazer = true;
+    }
+
+    public void LazerOff()
+    {
+        canLazer = false;
     }
 }
